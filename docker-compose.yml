@@ -1,0 +1,24 @@
+services:
+  web:
+    build: .
+    image: downyoutube:latest
+    network_mode: host
+    environment:
+      HOME: /tmp
+      DOWNLOAD_DIR: /downloads
+      PUID: "${PUID:-1000}"
+      PGID: "${PGID:-1000}"
+      PORT: "${WEB_PORT:-8080}"
+      ORCHESTRATOR_URL: "${ORCHESTRATOR_URL:-http://192.168.1.69:8100}"
+    volumes:
+      - ./downloads:/downloads
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          python -c "import os, urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:%s/health' % os.environ.get('PORT', '8080'), timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3

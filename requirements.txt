@@ -1,0 +1,4 @@
+yt-dlp[default,deno,curl-cffi]>=2024.12.13
+Flask>=3.0
+waitress>=3.0
+requests>=2.31
