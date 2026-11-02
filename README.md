@@ -10,7 +10,7 @@ docker run -d --name downyoutube \
   -e PUID="$(id -u)" -e PGID="$(id -g)" \
   -v "$PWD/downloads:/downloads" \
   --restart unless-stopped \
-  manologgcode/downyoutube:latest
+  manologcode/downyoutube:latest
 ```
 
 Abre `http://localhost:8080` (o `http://IP-DEL-HOST:8080`).
@@ -23,7 +23,7 @@ Los archivos se guardan en `./downloads`.
 docker logs -f downyoutube      # ver logs
 docker stop downyoutube         # detener
 docker rm downyoutube           # eliminar el contenedor
-docker pull manologgcode/downyoutube:latest   # actualizar
+docker pull manologcode/downyoutube:latest   # actualizar
 ```
 
 Si el puerto 8080 está ocupado, cambia `-p 8080:8080` por otro, por ejemplo `-p 9090:8080`.
@@ -56,7 +56,7 @@ docker run -d --name downyoutube \
   -e ORCHESTRATOR_AUDIO_PARAMS='{"language":"es"}' \
   -v "$PWD/downloads:/downloads" \
   --restart unless-stopped \
-  manologgcode/downyoutube:latest
+  manologcode/downyoutube:latest
 ```
 
 ## Cookies

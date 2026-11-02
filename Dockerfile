@@ -15,7 +15,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY downloader.py web.py ./
+COPY downloader.py web.py orchestrator.py ./
 COPY templates ./templates
 COPY static ./static
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh

@@ -1,7 +1,7 @@
 services:
   web:
     build: .
-    image: downyoutube:latest
+    image: manologcode/downyoutube:latest
     network_mode: host
     environment:
       HOME: /tmp
