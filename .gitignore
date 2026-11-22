@@ -1,1 +1,27 @@
-downloads/
+# Descargas y secretos
+/downloads/
+cookies.txt
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Restos de yt-dlp
+*.part
+*.ytdl
+*.temp
+
+# Editores y sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log

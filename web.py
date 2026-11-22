@@ -20,7 +20,6 @@ from flask import (
 )
 
 import downloader
-import orchestrator
 
 OUTPUT_DIR = Path(os.environ.get("DOWNLOAD_DIR", "/downloads"))
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -33,7 +32,7 @@ MAX_JOBS = 50
 FINISHED_STATUSES = {"done", "error", "cancelled"}
 
 app = Flask(__name__)
-app.config["JSON_SORT_KEYS"] = False
+app.json.sort_keys = False
 
 _jobs: dict[str, dict] = {}
 _jobs_lock = threading.Lock()
@@ -54,7 +53,6 @@ def _public_job(job: dict) -> dict:
         "status": job["status"],
         "mode": job["mode"],
         "urls": list(job["urls"]),
-        "current": job["current"],
         "message": job["message"],
         "progress": dict(job["progress"]),
         "results": [
@@ -66,7 +64,6 @@ def _public_job(job: dict) -> dict:
             }
             for result in job["results"]
         ],
-        "error": job["error"],
         "created": job["created"],
         "finished": job["finished"],
     }
@@ -183,21 +180,11 @@ def _progress_hooks(job: dict) -> list:
     return [on_progress]
 
 
-def _send_to_orchestrator(mode: str, files: list[Path]) -> None:
-    if mode == "audio":
-        for path in files:
-            orchestrator.submit_audio(path)
-    elif mode == "txt":
-        for path in files:
-            orchestrator.submit_text(path)
-
-
 def _download_one(job: dict, index: int) -> None:
     url = job["urls"][index]
     options = job["options"]
 
     with _jobs_lock:
-        job["current"] = index
         job["results"][index]["status"] = "running"
         job["progress"] = {"percent": 0.0, "speed": None, "eta": None, "filename": None}
         job["message"] = f"Obteniendo información de {url}"
@@ -233,8 +220,6 @@ def _download_one(job: dict, index: int) -> None:
             "filename": names[0] if names else job["progress"].get("filename"),
         }
         job["message"] = "Descarga completada."
-
-    _send_to_orchestrator(job["mode"], files)
 
 
 def _run_job(job_id: str) -> None:
@@ -317,7 +302,6 @@ def index():
         qualities=list(downloader.QUALITIES),
         audio_formats=AUDIO_FORMATS,
         default_langs=DEFAULT_LANGS,
-        orchestrator_enabled=orchestrator.is_enabled(),
     )
 
 
@@ -340,14 +324,12 @@ def create_job():
         "status": "queued",
         "mode": options["mode"],
         "urls": options["urls"],
-        "current": 0,
         "message": "En cola...",
         "progress": {"percent": 0.0, "speed": None, "eta": None, "filename": None},
         "results": [
             {"url": url, "status": "pending", "error": None, "files": []}
             for url in options["urls"]
         ],
-        "error": None,
         "created": _now(),
         "started": None,
         "finished": None,

@@ -9,7 +9,6 @@ services:
       PUID: "${PUID:-1000}"
       PGID: "${PGID:-1000}"
       PORT: "${WEB_PORT:-8080}"
-      ORCHESTRATOR_URL: "${ORCHESTRATOR_URL:-http://192.168.1.69:8100}"
     volumes:
       - ./downloads:/downloads
     restart: unless-stopped

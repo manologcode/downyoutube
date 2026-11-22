@@ -4,3 +4,8 @@ downloads/
 __pycache__/
 *.pyc
 *.md
+cookies.txt
+.env
+.venv/
+venv/
+env/

@@ -33,9 +33,32 @@ TIMESTAMP_RE = re.compile(r"^\d{1,2}:\d{2}(?::\d{2})?[.,]\d{3}\s*-->")
 TAG_RE = re.compile(r"<[^>]+>")
 SPACES_RE = re.compile(r"[ \t]+")
 
+RETRY_DELAYS = (0, 3, 10, 25)
+
 
 def log(message: str = "") -> None:
     print(message, flush=True)
+
+
+def _is_rate_limited(exc: Exception) -> bool:
+    message = str(exc)
+    return "429" in message or "Too Many Requests" in message
+
+
+def _with_rate_limit_retries(action):
+    last_error: Exception | None = None
+    for delay in RETRY_DELAYS:
+        if delay:
+            time.sleep(delay)
+        try:
+            return action()
+        except yt_dlp.utils.DownloadError as exc:
+            last_error = exc
+            if not _is_rate_limited(exc):
+                raise
+    if last_error:
+        raise last_error
+    raise RuntimeError("no se pudo completar la operación.")
 
 
 def parse_langs(value: str) -> list[str]:
@@ -203,21 +226,11 @@ def _video_entries(info: dict) -> list[dict]:
 
 
 def _extract_info(url: str, opts: dict) -> dict:
-    last_error: Exception | None = None
-    for delay in (0, 3, 10, 25):
-        if delay:
-            time.sleep(delay)
-        try:
-            with yt_dlp.YoutubeDL(opts) as ydl:
-                return ydl.extract_info(url, download=False)
-        except yt_dlp.utils.DownloadError as exc:
-            last_error = exc
-            message = str(exc)
-            if "429" not in message and "Too Many Requests" not in message:
-                raise
-    if last_error:
-        raise last_error
-    raise RuntimeError("no se pudo obtener información del vídeo.")
+    def run() -> dict:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            return ydl.extract_info(url, download=False)
+
+    return _with_rate_limit_retries(run)
 
 
 def _match_language(available: dict, wanted: str) -> str | None:
@@ -230,40 +243,24 @@ def _match_language(available: dict, wanted: str) -> str | None:
 
 
 def choose_subtitle_language(info: dict, langs: list[str]) -> str | None:
-    manual = info.get("subtitles") or {}
-    automatic = info.get("automatic_captions") or {}
-    for wanted in langs:
-        for pool in (manual, automatic):
+    pools = [info.get("subtitles") or {}, info.get("automatic_captions") or {}]
+    for wanted in [*langs, "en"]:
+        for pool in pools:
             match = _match_language(pool, wanted)
             if match:
                 return match
-    for pool in (manual, automatic):
-        match = _match_language(pool, "en")
-        if match:
-            return match
-    if manual:
-        return next(iter(manual))
-    if automatic:
-        return next(iter(automatic))
+    for pool in pools:
+        if pool:
+            return next(iter(pool))
     return None
 
 
 def _download_subtitles(entry: dict, opts: dict) -> None:
-    last_error: Exception | None = None
-    for delay in (0, 3, 10, 25):
-        if delay:
-            time.sleep(delay)
-        try:
-            with yt_dlp.YoutubeDL(opts) as ydl:
-                ydl.process_ie_result(entry, download=True)
-            return
-        except yt_dlp.utils.DownloadError as exc:
-            last_error = exc
-            message = str(exc)
-            if "429" not in message and "Too Many Requests" not in message:
-                raise
-    if last_error:
-        raise last_error
+    def run() -> None:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            ydl.process_ie_result(entry, download=True)
+
+    _with_rate_limit_retries(run)
 
 
 def vtt_to_text(content: str) -> str:
@@ -293,9 +290,9 @@ def vtt_to_text(content: str) -> str:
 
 def short_error(exc: Exception) -> str:
     message = " ".join(re.sub(r"^ERROR:\s*", "", str(exc)).split())
-    if "429" in message or "Too Many Requests" in message:
+    if _is_rate_limited(exc):
         message += (
             " | YouTube está limitando las peticiones (HTTP 429): espera unos minutos, "
-            "usa cookies (--cookies o downloads/cookies.txt) o prueba otra red."
+            "usa cookies (downloads/cookies.txt) o prueba otra red."
         )
     return message if len(message) <= 700 else message[:700] + "..."
